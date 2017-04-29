@@ -2,6 +2,7 @@ import os
 import cv2
 import csv
 import glob
+import time
 import random
 import argparse
 import numpy as np
@@ -121,7 +122,7 @@ class Detector:
         return [predicted_class[0], self.classes[str(predicted_class[0])]]
 
 
-    def test_image(self, image):
+    def test_image(self, image, return_image=False, output=None):
         # Detect location of traffic sign
         detections = self.detect_traffic_sign(image)
 
@@ -138,19 +139,69 @@ class Detector:
             detected_sign = [detection, predicted_class]
             detected_signs.append(detected_sign)
 
+        if output:
+            image = self.get_image_with_bb(image, detected_signs)
+            cv2.imwrite(output, image)
+
+        if return_image:
+            image = self.get_image_with_bb(image, detected_signs)
+            return image
+
         return detected_signs
 
 
     def test_folder(self, input_folder, output_folder):
-        pass
+        file_filter = '*.jpg'
+        file_list = glob.glob(os.path.join(input_folder, file_filter))
+
+        for image_path in file_list:
+            image = cv2.imread(image_path)
+            basename = os.path.basename(image_path)
+            output = os.path.join(output_folder, basename)
+            self.test_image(image, output)
 
 
     def test_video(self, video_path):
-        pass
+        cap = cv2.VideoCapture(video_path)
+
+        while(cap.isOpened()):
+            ret, frame = cap.read()
+            image = self.test_image(frame, return_image=True)
+            cv2.imshow('Output', frame)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
 
     def test_webcam(self):
         pass
+
+
+    def get_image_with_bb(self, image, detections):
+        color = (140, 242, 89)
+
+        for detection in detections:
+            x1, y1, x2, y2 = detection[0]
+            label = detection[1][1]
+
+            # Draw bounding box
+            image = cv2.rectangle(image, (x2,y2), (x1,y1), color, 15)
+
+            # Font and text configuration
+            font = cv2.FONT_HERSHEY_DUPLEX
+            scale = 1
+            thickness = 2
+            baseline = 0
+
+            # Draw rectangle as background text
+            text = cv2.getTextSize(label, font, scale, thickness)
+            text_width, text_height = text[0]
+            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, 15)
+            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, -1)
+
+            # Draw text
+            image = cv2.putText(image, label, (x1, y1-20), cv2.FONT_HERSHEY_DUPLEX, scale, (255,255,255), thickness)
+
+        return image
 
 
 if __name__ == '__main__':
@@ -167,7 +218,7 @@ if __name__ == '__main__':
     detector = Detector()
 
     # Read image for detection
-    image_path = '/home/arian/test.jpg'
+    image_path = 'images/test-021032.jpg'
     image = cv2.imread(image_path)
 
     # Show image for testing purposes
@@ -189,7 +240,10 @@ if __name__ == '__main__':
     predicted_class = detector.classify_traffic_sign(crop)
 
     print('ID: {}\t LABEL: {}'.format(predicted_class[0], predicted_class[1]))
+
+
+    detections = detector.test_folder('images/', None)
+    print(detections)
     """
 
-    detections = detector.test_image(image)
-    print(detections)
+    detector.test_video('/home/arian/videoplayback.mp4')
