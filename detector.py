@@ -2,7 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
 import sys
-sys.stderr = open('/dev/null', 'w')
+#sys.stderr = open('/dev/null', 'w')
 
 import cv2
 import json
@@ -26,9 +26,9 @@ class Detector:
                  model_path='yolo/yolo.h5',
                  anchors_path='yolo/yolo_anchors.txt',
                  classes_path='yolo/yolo_classes.txt',
-                 yolo_thresh=0.3,
+                 yolo_thresh=0.24,
                  yolo_iou_thresh=0.5,
-                 classification_thresh = 0.75,
+                 crop_percent=0.15,
                  classes_file='data/custom/classes.json',
                  weights_path='checkpoints/model_3_custom/model_3_custom-weights-18-1.00.hdf5'):
 
@@ -64,6 +64,8 @@ class Detector:
                                                                self.input_image_shape,
                                                                score_threshold=yolo_thresh,
                                                                iou_threshold=yolo_iou_thresh)
+
+        self.crop_percent = crop_percent
 
         # ########################### #
         # Initialize classifier model #
@@ -130,12 +132,31 @@ class Detector:
     def test_image(self, image, return_image=False, output=None):
         # Detect location of traffic sign
         detections = self.detect_traffic_sign(image)
+        img_height, img_width, _ = image.shape
 
         detected_signs = []
 
         # For each detected sign
         for detection in detections:
             x1, y1, x2, y2 = detection
+
+            width = x2 - x1
+            height = y2 - y1
+
+            new_x1 = int(x1 - self.crop_percent*width)
+            new_x2 = int(x2 + self.crop_percent*width)
+            new_y1 = int(y1 - self.crop_percent*height)
+            new_y2 = int(y2 + self.crop_percent*height)
+
+            if new_x1 < 0:
+                new_x1 = 0
+            if new_x2 > img_width:
+                new_x2 = img_width
+            if new_y1 < 0:
+                new_y1 = 0
+            if new_y2 > img_height:
+                new_y2 = img_height
+
             crop = image[y1:y2, x1:x2]
 
             # Classify detected sign
@@ -262,6 +283,5 @@ if __name__ == '__main__':
     # Create Detector object
     detector = Detector()
 
-    input_folder = 'images/'
-    output_folder = 'images/out'
-    detector.test_folder(input_folder, output_folder)
+    video_file = '/home/arian/videoplayback.mp4'
+    detector.test_video(video_file)
