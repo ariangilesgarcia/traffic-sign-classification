@@ -1,4 +1,9 @@
 import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
+
+import sys
+sys.stderr = open('/dev/null', 'w')
+
 import cv2
 import csv
 import glob
@@ -8,7 +13,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tqdm import tqdm_notebook
+from tqdm import tqdm
 from keras import backend as K
 from keras.models import load_model
 from yad2k.models.keras_yolo import yolo_eval, yolo_head
@@ -23,6 +28,7 @@ class Detector:
                  classes_path='yolo/yolo_classes.txt',
                  yolo_thresh=0.3,
                  yolo_iou_thresh=0.5,
+                 classification_thresh = 0.75,
                  classes_file='data/custom/classes.csv',
                  weights_path='checkpoints/model_3_custom/model_3_custom-weights-18-1.00.hdf5'):
 
@@ -161,19 +167,67 @@ class Detector:
             self.test_image(image, output)
 
 
-    def test_video(self, video_path):
+    def test_video(self, video_path, output=None):
         cap = cv2.VideoCapture(video_path)
 
-        while(cap.isOpened()):
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        if output:
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter(output, fourcc, fps, (width, height))
+
+        for i in tqdm(range(frames)):
             ret, frame = cap.read()
             image = self.test_image(frame, return_image=True)
-            cv2.imshow('Output', frame)
+
+            if output:
+                out.write(image)
+            else:
+                cv2.imshow('Output', image)
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    cv2.destroyAllWindows()
+                    break
+
+        if output:
+            out.release()
+
+        cap.release()
+
+
+    def test_webcam(self, feed=0, output=None):
+        if output:
+            cap = cv2.VideoCapture(0)
+            width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            cap.release()
+
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            out = cv2.VideoWriter(output, fourcc, 20.0, (width, height))
+
+        while True:
+            # Get feed frame
+            cap = cv2.VideoCapture(0)
+            ret, frame = cap.read()
+            cap.release()
+
+            # Test image
+            image = self.test_image(frame, return_image=True)
+            cv2.imshow('frame', image)
+
+            if output:
+                out.write(image)
+
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
+        if output:
+            out.release()
 
-    def test_webcam(self):
-        pass
+        cv2.destroyAllWindows()
 
 
     def get_image_with_bb(self, image, detections):
@@ -246,4 +300,6 @@ if __name__ == '__main__':
     print(detections)
     """
 
-    detector.test_video('/home/arian/videoplayback.mp4')
+    #detector.test_video('/home/arian/test.mp4')
+
+    detector.test_webcam(output='webcam.avi')
