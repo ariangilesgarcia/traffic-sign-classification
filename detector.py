@@ -5,7 +5,7 @@ import sys
 sys.stderr = open('/dev/null', 'w')
 
 import cv2
-import csv
+import json
 import glob
 import time
 import random
@@ -29,7 +29,7 @@ class Detector:
                  yolo_thresh=0.3,
                  yolo_iou_thresh=0.5,
                  classification_thresh = 0.75,
-                 classes_file='data/custom/classes.csv',
+                 classes_file='data/custom/classes.json',
                  weights_path='checkpoints/model_3_custom/model_3_custom-weights-18-1.00.hdf5'):
 
         # ##################### #
@@ -70,9 +70,8 @@ class Detector:
         # ########################### #
 
         # Load classes names
-        with open(classes_file, mode='r') as csv_file:
-            reader = csv.reader(csv_file)
-            self.classes = {rows[0]:rows[1] for rows in reader}
+        with open(classes_file, 'r') as classes_data:
+            self.classes = json.load(classes_data)
 
         # Load model and weights
         self.model = model_3(weights_path)
@@ -125,7 +124,7 @@ class Detector:
         # Predict class for image
         predicted_class = self.model.predict_classes(image, verbose=False)
 
-        return [predicted_class[0], self.classes[str(predicted_class[0])]]
+        return [predicted_class[0], self.classes[str(predicted_class[0])]['name']]
 
 
     def test_image(self, image, return_image=False, output=None):
@@ -164,7 +163,7 @@ class Detector:
             image = cv2.imread(image_path)
             basename = os.path.basename(image_path)
             output = os.path.join(output_folder, basename)
-            self.test_image(image, output)
+            self.test_image(image, output=output)
 
 
     def test_video(self, video_path, output=None):
@@ -231,11 +230,12 @@ class Detector:
 
 
     def get_image_with_bb(self, image, detections):
-        color = (140, 242, 89)
-
         for detection in detections:
             x1, y1, x2, y2 = detection[0]
+            label_id = detection[1][0]
             label = detection[1][1]
+
+            color = self.classes[str(label_id)]['color']
 
             # Draw bounding box
             image = cv2.rectangle(image, (x2,y2), (x1,y1), color, 15)
@@ -259,47 +259,9 @@ class Detector:
 
 
 if __name__ == '__main__':
-    """
-    parser = argparse.ArgumentParser(description='label-to-crops')
-
-    parser.add_argument('input_folder', help='path for the input folder')
-    parser.add_argument('output_folder', help='path for the output folder')
-
-    args = parser.parse_args()
-    """
-
     # Create Detector object
     detector = Detector()
 
-    # Read image for detection
-    image_path = 'images/test-021032.jpg'
-    image = cv2.imread(image_path)
-
-    # Show image for testing purposes
-    """
-    cv2.imshow('Image for detection', image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
-    # Convert image to RGB
-    #image = image[...,::-1]
-
-    # Call Detector.detect_traffic_sign() function
-    detections = detector.detect_traffic_sign(image)
-
-    # Crop image
-    x1, y1, x2, y2 = detections[0]
-    crop = image[y1:y2, x1:x2]
-    predicted_class = detector.classify_traffic_sign(crop)
-
-    print('ID: {}\t LABEL: {}'.format(predicted_class[0], predicted_class[1]))
-
-
-    detections = detector.test_folder('images/', None)
-    print(detections)
-    """
-
-    #detector.test_video('/home/arian/test.mp4')
-
-    detector.test_webcam(output='webcam.avi')
+    input_folder = 'images/'
+    output_folder = 'images/out'
+    detector.test_folder(input_folder, output_folder)

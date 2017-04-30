@@ -1,0 +1,38 @@
+{
+  "0": {
+      "name": "Cruce",
+      "color": [95,173,86]
+    },
+  "1": {
+      "name": "Empalme Izquierda",
+      "color": [201,66,119]
+    },
+  "2": {
+      "name": "Empalme Derecha",
+      "color": [224,193,78]
+    },
+  "3": {
+      "name": "Contramano",
+      "color": [247,129,84]
+    },
+  "4": {
+      "name": "Curva Izquierda",
+      "color": [78,89,140]
+    },
+  "5": {
+      "name": "Curva Derecha",
+      "color": [183,226,88]
+    },
+  "6": {
+      "name": "Maxima 40",
+      "color": [255,60,56]
+    },
+  "7": {
+      "name": "Maxima 60",
+      "color": [229,68,109]
+    },
+  "8": {
+      "name": "Maxima 80",
+      "color": [252,163,17]
+    }
+}
