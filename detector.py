@@ -22,10 +22,10 @@ class Detector:
                  model_path='yolo/yolo.h5',
                  anchors_path='yolo/yolo_anchors.txt',
                  classes_path='yolo/yolo_classes.txt',
-                 yolo_thresh=0.1,
+                 yolo_thresh=0.24,
                  yolo_iou_thresh=0.5,
-                 classifier_thresh=0.5,
-                 crop_percent=0.15,
+                 classifier_thresh=0.9,
+                 crop_percent=0.25,
                  classes_file='data/custom/classes.json',
                  weights_path='checkpoints/model_4_custom/model_4_custom-weights-10-1.00.hdf5'):
 
@@ -170,6 +170,8 @@ class Detector:
                 y1 = 0
             if y2 > img_height:
                 y2 = img_height
+
+            detection = x1, y1, x2, y2
 
             crop = image[y1:y2, x1:x2]
 
