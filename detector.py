@@ -22,11 +22,12 @@ class Detector:
                  model_path='yolo/yolo.h5',
                  anchors_path='yolo/yolo_anchors.txt',
                  classes_path='yolo/yolo_classes.txt',
-                 yolo_thresh=0.24,
+                 yolo_thresh=0.1,
                  yolo_iou_thresh=0.5,
+                 classifier_thresh=0.5,
                  crop_percent=0.15,
                  classes_file='data/custom/classes.json',
-                 weights_path='checkpoints/model_3_custom/model_3_custom-weights-18-1.00.hdf5'):
+                 weights_path='checkpoints/model_4_custom/model_4_custom-weights-10-1.00.hdf5'):
 
         # ##################### #
         # Initialize YOLO model #
@@ -71,8 +72,11 @@ class Detector:
         with open(classes_file, 'r') as classes_data:
             self.classes = json.load(classes_data)
 
+        # Save threshold
+        self.classifier_thresh = classifier_thresh
+
         # Load model and weights
-        self.model = model_3(weights_path)
+        self.model = model_4(weights_path)
 
 
     def detect_traffic_sign(self, image):
@@ -120,9 +124,13 @@ class Detector:
         image = np.expand_dims(image, axis=0)
 
         # Predict class for image
-        predicted_class = self.model.predict_classes(image, verbose=False)
+        predictions = self.model.predict(image, verbose=False)[0]
+        class_id = np.argmax(predictions)
 
-        return [predicted_class[0], self.classes[str(predicted_class[0])]['name']]
+        if predictions[class_id] > self.classifier_thresh:
+            return [class_id, self.classes[str(class_id)]['name']]
+        else:
+            return None
 
 
     def test_image(self, image, return_image=False, show_image=False, output=None):
@@ -168,8 +176,9 @@ class Detector:
             # Classify detected sign
             predicted_class = self.classify_traffic_sign(crop)
 
-            detected_sign = [detection, predicted_class]
-            detected_signs.append(detected_sign)
+            if predicted_class:
+                detected_sign = [detection, predicted_class]
+                detected_signs.append(detected_sign)
 
         if output:
             image = self.get_image_with_bb(image, detected_signs)
