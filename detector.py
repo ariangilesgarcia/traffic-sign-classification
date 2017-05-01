@@ -270,8 +270,11 @@ class Detector:
 
             color = self.classes[str(label_id)]['color']
 
+            # Box thickness
+            bbox_thickness = 10
+
             # Draw bounding box
-            image = cv2.rectangle(image, (x2,y2), (x1,y1), color, 15)
+            image = cv2.rectangle(image, (x2,y2), (x1,y1), color, bbox_thickness)
 
             # Font and text configuration
             font = cv2.FONT_HERSHEY_DUPLEX
@@ -282,7 +285,7 @@ class Detector:
             # Draw rectangle as background text
             text = cv2.getTextSize(label, font, scale, thickness)
             text_width, text_height = text[0]
-            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, 15)
+            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, bbox_thickness)
             image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, -1)
 
             # Draw text
