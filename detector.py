@@ -2,7 +2,8 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
 
 import sys
-#sys.stderr = open('/dev/null', 'w')
+stderr = sys.stderr
+sys.stderr = open('/dev/null', 'w')
 
 import cv2
 import json
@@ -77,6 +78,9 @@ class Detector:
 
         # Load model and weights
         self.model = model_3(weights_path)
+
+        # Restore stderr pipe
+        sys.stderr = stderr
 
 
     def detect_traffic_sign(self, image):
