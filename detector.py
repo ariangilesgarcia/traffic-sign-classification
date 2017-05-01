@@ -136,22 +136,32 @@ class Detector:
         for detection in detections:
             x1, y1, x2, y2 = detection
 
+            # Calculate width and height of crop
             width = x2 - x1
             height = y2 - y1
 
-            new_x1 = int(x1 - self.crop_percent*width)
-            new_x2 = int(x2 + self.crop_percent*width)
-            new_y1 = int(y1 - self.crop_percent*height)
-            new_y2 = int(y2 + self.crop_percent*height)
+            # Calculate center point of crop
+            center_x = x1 + int(width/2)
+            center_y = y1 + int(height/2)
 
-            if new_x1 < 0:
-                new_x1 = 0
-            if new_x2 > img_width:
-                new_x2 = img_width
-            if new_y1 < 0:
-                new_y1 = 0
-            if new_y2 > img_height:
-                new_y2 = img_height
+            # Calculate the size of the square side
+            size = max(width, height)
+            size = int(size/2 + (1 + self.crop_percent))
+
+            # Calculate new coords
+            x1 = center_x - size
+            x2 = center_x + size
+            y1 = center_y - size
+            y2 = center_y + size
+
+            if x1 < 0:
+                x1 = 0
+            if x2 > img_width:
+                x2 = img_width
+            if y1 < 0:
+                y1 = 0
+            if y2 > img_height:
+                y2 = img_height
 
             crop = image[y1:y2, x1:x2]
 
