@@ -1,10 +1,5 @@
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL']='3'
-
 import sys
-stderr = sys.stderr
-sys.stderr = open('/dev/null', 'w')
-
 import cv2
 import json
 import glob
@@ -78,9 +73,6 @@ class Detector:
 
         # Load model and weights
         self.model = model_3(weights_path)
-
-        # Restore stderr pipe
-        sys.stderr = stderr
 
 
     def detect_traffic_sign(self, image):
@@ -190,7 +182,7 @@ class Detector:
         file_filter = '*.jpg'
         file_list = glob.glob(os.path.join(input_folder, file_filter))
 
-        for image_path in file_list:
+        for image_path in tqdm(file_list):
             image = cv2.imread(image_path)
             basename = os.path.basename(image_path)
             output = os.path.join(output_folder, basename[:-4] + '_test.jpg')
