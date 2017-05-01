@@ -282,14 +282,25 @@ class Detector:
             thickness = 2
             baseline = 0
 
-            # Draw rectangle as background text
+            # Image shape
+            img_height, img_width, _ = image.shape
+
+            # Label text variables
             text = cv2.getTextSize(label, font, scale, thickness)
             text_width, text_height = text[0]
-            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, bbox_thickness)
-            image = cv2.rectangle(image, (x1, y1), (x1+text_width, y1-30-text_height), color, -1)
+
+            x_text = x1
+            y_text = y1 - 20
+
+            if x_text + text_width > img_width:
+                x_text = img_width - text_width
+
+            # Draw rectangle as background text
+            image = cv2.rectangle(image, (x_text, y1), (x_text+text_width, y1-30-text_height), color, bbox_thickness)
+            image = cv2.rectangle(image, (x_text, y1), (x_text+text_width, y1-30-text_height), color, -1)
 
             # Draw text
-            image = cv2.putText(image, label, (x1, y1-20), cv2.FONT_HERSHEY_DUPLEX, scale, (255,255,255), thickness)
+            image = cv2.putText(image, label, (x_text, y_text), cv2.FONT_HERSHEY_DUPLEX, scale, (255,255,255), thickness)
 
         return image
 
