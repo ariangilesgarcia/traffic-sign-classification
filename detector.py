@@ -129,7 +129,7 @@ class Detector:
         return [predicted_class[0], self.classes[str(predicted_class[0])]['name']]
 
 
-    def test_image(self, image, return_image=False, output=None):
+    def test_image(self, image, return_image=False, show_image=False, output=None):
         # Detect location of traffic sign
         detections = self.detect_traffic_sign(image)
         img_height, img_width, _ = image.shape
@@ -169,6 +169,12 @@ class Detector:
             image = self.get_image_with_bb(image, detected_signs)
             cv2.imwrite(output, image)
 
+        if show_image:
+            image = self.get_image_with_bb(image, detected_signs)
+            cv2.imshow('results', image)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
         if return_image:
             image = self.get_image_with_bb(image, detected_signs)
             return image
@@ -183,7 +189,7 @@ class Detector:
         for image_path in file_list:
             image = cv2.imread(image_path)
             basename = os.path.basename(image_path)
-            output = os.path.join(output_folder, basename)
+            output = os.path.join(output_folder, basename[:-4] + '_test.jpg')
             self.test_image(image, output=output)
 
 
@@ -280,8 +286,74 @@ class Detector:
 
 
 if __name__ == '__main__':
+    # Argument parser
+    parser = argparse.ArgumentParser(description="Traffic Sign Detector")
+    test_sp = parser.add_subparsers(help='Test image/folder/video/webcam for traffic signs', dest='command')
+
+    image_parser = test_sp.add_parser('image', help='Test image for traffic signs')
+    image_parser.add_argument('-i', '--input-image', required=True, help='Path of the image to test')
+    image_parser.add_argument('-o', '--output-image', help='Path where the output image is saved')
+
+    folder_parser = test_sp.add_parser('folder', help='Test all images in a folder for traffic signs')
+    folder_parser.add_argument('-i', '--input-folder', required=True, help='Path of the folder containing images to test')
+    folder_parser.add_argument('-o', '--output-folder', help='Path where the tested images are saved')
+
+    video_parser = test_sp.add_parser('video', help='Test video for traffic signs')
+    video_parser.add_argument('-i', '--input-video', required=True, help='Path of the video to test')
+    video_parser.add_argument('-o', '--output-video', help='Path where the output video is saved')
+
+    webcam_parser = test_sp.add_parser('webcam', help='Test webcam feed for traffic signs')
+    webcam_parser.add_argument('-i', '--input-feed', help='ID of the webcam to test')
+    webcam_parser.add_argument('-o', '--output-video', help='Path where the feed video is saved')
+
+    args = parser.parse_args()
+
     # Create Detector object
     detector = Detector()
 
-    video_file = '/home/arian/videoplayback.mp4'
-    detector.test_video(video_file)
+    # Parse arguments
+    if args.command == 'image':
+        image_path = args.input_image
+        output_path = args.output_image
+
+        # Load image
+        image = cv2.imread(image_path)
+
+        # Test image
+        if output_path:
+            detector.test_image(image=image, output=output_path)
+        else:
+            detector.test_image(image=image, show_image=True)
+
+    elif args.command == 'folder':
+        # Check if argument is a folder
+        if not os.path.isdir(args.input_folder):
+            parser.print_help()
+            sys.exit()
+
+        if args.output_folder and not os.path.isdir(args.output_folder):
+            parser.print_help()
+            sys.exit()
+
+        input_folder = args.input_folder
+        output_folder = args.output_folder if args.output_folder else input_folder
+
+        # Test folder
+        detector.test_folder(input_folder=input_folder, output_folder=output_folder)
+
+    elif args.command == 'video':
+        video_path = args.input_video
+        output_path = args.output_video
+
+        # Test video
+        detector.test_video(video_path=video_path, output=output_path)
+
+    elif args.command == 'webcam':
+        feed_id = args.input_feed
+        output_path = args.output_video
+
+        # Test webcam
+        if feed_id:
+            detector.test_webcam(feed=feed_id, output=output_path)
+        else:
+            detector.test_webcam(output=output_path)
