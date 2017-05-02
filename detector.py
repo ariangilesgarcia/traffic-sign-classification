@@ -7,24 +7,19 @@ import time
 import random
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
-
 from tqdm import tqdm
-from keras import backend as K
-from keras.models import load_model
-from yad2k.models.keras_yolo import yolo_eval, yolo_head
-
 from models.cnn_models import *
+import matplotlib.pyplot as plt
+from darkflow.net.build import TFNet
 
 
 class Detector:
     def __init__(self,
-                 model_path='yolo/yolo.h5',
-                 anchors_path='yolo/yolo_anchors.txt',
-                 classes_path='yolo/yolo_classes.txt',
-                 yolo_thresh=0.24,
-                 yolo_iou_thresh=0.5,
-                 classifier_thresh=0.9,
+                 cfg_path='yolo/yolo-obj.cfg',
+                 yolo_input_size=416,
+                 yolo_weights_path='yolo/yolo-obj.weights',
+                 yolo_threshold=0.24,
+                 classifier_thresh=0.1,
                  crop_percent=0.25,
                  classes_file='data/custom/classes.json',
                  weights_path='checkpoints/model_4_custom/model_4_custom-weights-10-1.00.hdf5'):
@@ -33,36 +28,10 @@ class Detector:
         # Initialize YOLO model #
         # ##################### #
 
-        # Get tensorflow session
-        self.sess = K.get_session()
+        options = {"model": cfg_path, "config": cfg_path, "load": yolo_weights_path, "threshold": yolo_threshold, "gpu": 1}
+        self.yolo = TFNet(options)
 
-        # Read YOLO classes names
-        with open(classes_path) as f:
-            self.class_names = f.readlines()
-            self.class_names = [c.strip() for c in self.class_names]
-
-        # Read anchors
-        with open(anchors_path) as f:
-            self.anchors = f.readline()
-            self.anchors = [float(x) for x in self.anchors.split(',')]
-            self.anchors = np.array(self.anchors).reshape(-1, 2)
-
-        # Load keras model
-        self.yolo_model = load_model(model_path)
-
-        # Get input image size
-        self.model_image_size = self.yolo_model.layers[0].input_shape[1:3]
-
-        # Generate output tensor targets for filtered bounding boxes.
-        self.yolo_outputs = yolo_head(self.yolo_model.output, self.anchors, len(self.class_names))
-        self.input_image_shape = K.placeholder(shape=(2, ))
-
-        self.boxes, self.scores, self.classes_yolo = yolo_eval(self.yolo_outputs,
-                                                               self.input_image_shape,
-                                                               score_threshold=yolo_thresh,
-                                                               iou_threshold=yolo_iou_thresh)
-
-        self.crop_percent = crop_percent
+        self.yolo_input_size = (yolo_input_size, yolo_input_size)
 
         # ########################### #
         # Initialize classifier model #
@@ -78,39 +47,28 @@ class Detector:
         # Load model and weights
         self.model = model_4(weights_path)
 
+        # ##################### #
+        # Initialize variables  #
+        # ##################### #
+
+        self.crop_percent = crop_percent
+
 
     def detect_traffic_sign(self, image):
-        resized_image = cv2.resize(image, self.model_image_size)
+        resized_image = cv2.resize(image, self.yolo_input_size)
         image_data = np.array(resized_image, dtype='float32')
 
-        image_data /= 255.
-        image_data = np.expand_dims(image_data, axis=0)
-
-        out_boxes, out_scores, out_classes = self.sess.run(
-            [self.boxes, self.scores, self.classes_yolo],
-            feed_dict={
-                self.yolo_model.input: image_data,
-                self.input_image_shape: [image.shape[0], image.shape[1]],
-                K.learning_phase(): 0
-            })
+        ts_detections = self.yolo.return_predict(image)
 
         detections = []
 
-        for i, c in reversed(list(enumerate(out_classes))):
-            predicted_class = self.class_names[c]
-            box = out_boxes[i]
-            score = out_scores[i]
+        for detection in ts_detections:
+            x1 = detection['topleft']['x']
+            y1 = detection['topleft']['y']
+            x2 = detection['bottomright']['x']
+            y2 = detection['bottomright']['y']
 
-            label = '{} {:.2f}'.format(predicted_class, score)
-
-            top, left, bottom, right = box
-            top = max(0, np.floor(top + 0.5).astype('int32'))
-            left = max(0, np.floor(left + 0.5).astype('int32'))
-            bottom = min(image.shape[0], np.floor(bottom + 0.5).astype('int32'))
-            right = min(image.shape[1], np.floor(right + 0.5).astype('int32'))
-
-            # item = [predicted_class, score, left, top, right, bottom]
-            item = [left, top, right, bottom]
+            item = [x1, y1, x2, y2]
             detections.append(item)
 
         return detections
@@ -118,7 +76,7 @@ class Detector:
 
     def classify_traffic_sign(self, image):
         # Resize image
-        image = [...,::-1]
+        image = image[...,::-1]
         image = cv2.resize(image, (IMG_SIZE, IMG_SIZE))
 
         # Add batch dimension
