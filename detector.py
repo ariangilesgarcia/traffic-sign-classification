@@ -118,6 +118,7 @@ class Detector:
 
     def classify_traffic_sign(self, image):
         # Resize image
+        image = [...,::-1]
         image = cv2.resize(image, (IMG_SIZE, IMG_SIZE))
 
         # Add batch dimension
