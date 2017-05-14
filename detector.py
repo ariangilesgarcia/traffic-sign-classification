@@ -19,10 +19,10 @@ class Detector:
                  yolo_input_size=416,
                  yolo_weights_path='yolo/yolo-obj.weights',
                  yolo_threshold=0.24,
-                 classifier_thresh=0.1,
+                 classifier_thresh=0.9,
                  crop_percent=0.25,
-                 classes_file='data/custom/classes.json',
-                 weights_path='checkpoints/model_4_custom/model_4_custom-weights-10-1.00.hdf5'):
+                 classes_file='data/20-classes/classes.json',
+                 weights_path='checkpoints/model-1-20-classes-new/model-1-20-classes-new-weights-35-1.00.hdf5'):
 
         # ##################### #
         # Initialize YOLO model #
@@ -30,8 +30,6 @@ class Detector:
 
         options = {"model": cfg_path, "config": cfg_path, "load": yolo_weights_path, "threshold": yolo_threshold, "gpu": 1}
         self.yolo = TFNet(options)
-
-        self.yolo_input_size = (yolo_input_size, yolo_input_size)
 
         # ########################### #
         # Initialize classifier model #
@@ -45,7 +43,7 @@ class Detector:
         self.classifier_thresh = classifier_thresh
 
         # Load model and weights
-        self.model = model_4(weights_path)
+        self.model = new_model_1_20(weights_path)
 
         # ##################### #
         # Initialize variables  #
@@ -53,11 +51,16 @@ class Detector:
 
         self.crop_percent = crop_percent
 
+        self.num_classes = len(self.classes.keys())
+
+        # Sign must be detected in 8 out of the 15 latest frames
+        self.frame_count = 30
+        self.frame_detection_thresh = 20
+
+        self.last_detections = np.zeros(shape=(self.frame_count, self.num_classes))
+
 
     def detect_traffic_sign(self, image):
-        resized_image = cv2.resize(image, self.yolo_input_size)
-        image_data = np.array(resized_image, dtype='float32')
-
         ts_detections = self.yolo.return_predict(image)
 
         detections = []
@@ -98,6 +101,8 @@ class Detector:
         img_height, img_width, _ = image.shape
 
         detected_signs = []
+
+        detected_signs_array = []
 
         # For each detected sign
         for detection in detections:
@@ -140,6 +145,10 @@ class Detector:
             if predicted_class:
                 detected_sign = [detection, predicted_class]
                 detected_signs.append(detected_sign)
+
+                detected_signs_array.append(predicted_class[0])
+
+        self.update_detections(detected_signs_array)
 
         if output:
             image = self.get_image_with_bb(image, detected_signs)
@@ -273,6 +282,18 @@ class Detector:
             image = cv2.putText(image, label, (x_text, y_text), cv2.FONT_HERSHEY_DUPLEX, scale, (255,255,255), thickness)
 
         return image
+
+
+    def update_detections(self, detected_signs_array):
+        self.last_detections = np.roll(self.last_detections, -1, axis=0)
+        self.last_detections[self.frame_count - 1, :] = 0
+
+        self.last_detections[self.frame_count - 1, detected_signs_array] = 1
+
+        frames_sum = np.sum(self.last_detections, axis=0)
+
+        detected_classes_ids =  np.where(frames_sum > self.frame_detection_thresh)
+        print(detected_classes_ids)
 
 
 if __name__ == '__main__':
